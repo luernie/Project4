@@ -9,16 +9,11 @@ sympref('FloatingPointOutput', true) % This allows floating point coefficient
 format short
 syms L1 L2 t1 t2
 
-% Robot Configurations
-%L1=0.25; L2=0.75; % Configuration 1
-%L1=0.5; L2=0.5; % Configuration 2
-%L1=0.75; L2=0.25; % Configuration 3
-
 % DH parameters for robot
-alpha = [ 0 0   0]; % Create a symbolic representation of a constant
-a   =   [0 L1  L2];
-d   =   [0   0 0];
-theta = [t1  t2 0];
+alpha = [0  0   0]; % Create a symbolic representation of a constant
+a   =   [0  L1  L2];
+d   =   [0  0   0];
+theta = [t1 t2  0];
 
 % Define the robot with Robot Toolbox
 L(1) = Link('revolute','d',0,'a',0,'alpha',0,'modified'); % base frame
@@ -47,7 +42,7 @@ Pe = T03(1:3,4); %BUG: This should not be Tfinal but T02 cause we don't care abo
 Z01 = T01(1:3, 3); % z-axis of frame 1 (Joint 1 axis)
 Z02 = T02(1:3, 3); % z-axis of frame 2 (Joint 1 axis)
 % Z03 = T03(1:3, 3); % z-axis of frame 3 (Joint 1 axis)
-%%
+
 J1 = [cross(Z01,(Pe-P01)); Z01]; % Revolute Joint Equation
 J2 = [cross(Z02,(Pe-P02)); Z02]; 
 % J3 = [cross(Z03,(Pe-P03)); Z03]; % Take this out because we don't need the last term
@@ -55,12 +50,56 @@ J2 = [cross(Z02,(Pe-P02)); Z02];
 % J5 = [cross(Z05,(Pe-P05)); Z05]; 
 % J6 = [cross(Z06,(Pe-P06)); Z06]; 
 J_DD = simplify([J1, J2])
-% det_J = (det(J_DD));
 
 % BUG: We only care about the joint velocities and not the end effector value.
+%% Double for loop
+for c = 1:3% each configuration
+    Config1 = [0.25 0.75]; % L1 and L2 parameters
+    Config2 = [0.5 0.5];
+    Config3 = [0.75 0.25];
+    ConfigAll = [Config1; Config2; Config3];
+    L1_num = ConfigAll(c,1);
+    L2_num = ConfigAll(c,2);
 
-%% Scratch New
+    L(1) = Link('revolute', 'd', 0, 'a', 0, 'alpha', 0, 'modified');    % base frame
+    L(2) = Link('revolute', 'd', 0, 'a', L1_num, 'alpha', 0, 'modified');   % frame 1
+    L(3) = Link('revolute', 'd', 0, 'a', L2_num, 'alpha', 0, 'modified');   % frame 2
+    
+    Robot = SerialLink(L, 'name', '2R SCARA Arm') % Combine Link objects together to form a Robot Object
+end
 
+
+    % L_num(3) = subs(L(3),{L2},{L2_num});
+    % Robot_num = SerialLink(L_num, 'name', '2R SCARA Arm') % Combine Link objects together to form a Robot Object
+
+    % syms t1 t2; %TODO: here is the stuff for 
+    % symbolic_expr = t1^2 + t2^2;
+    % t1_value = 1.5;  % Numeric value for t1
+    % t2_value = 0.7;  % Numeric value for t2
+    % numeric_expr = subs(symbolic_expr, {t1, t2}, {t1_value, t2_value});
+    % disp(['Result of substituting t1 = ', num2str(t1_value), ' and t2 = ', num2str(t2_value)]);
+    % disp(['Numeric Expression: ', char(numeric_expr)]);
+
+    % % redefine robot parameters to reflect the symbolic
+    % for i = 1:5 %1:length(X)
+    %     % Calculate Ik for each X,Y combo
+    %     [t1, t2] = IK(X(i), Y, L1, L2);
+
+    %     % Graph that robot position
+    %     figure()
+    %     Robot_num.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
+    %     % FIXME: SO t1 is actually controlling t2 and t2 just changes the EE orientation
+    %     % Bug: So the first robot link is not appearing for some reason here
+        
+    %     % Add onto the ellipse
+    %     % Robot.vellipse([t1 t2], 'fillcolor','b', 'edgecolor','w',alpha',0.5);
+    %     % Robot.fellipse([t1 t2], 'fillcolor','r', 'edgecolor','w',alpha',0.5);
+    %     % BUG: Not working here for the ellipse, why Jacobian bad?
+    %     disp("hello")
+    %     % TODO: get both ellipses on to the graph
+    %     % TODO: Graph the matrix stuff for each
+    %     % TODO: If not able to then skip and say its singular
+    % end
 %% Eigenvalues and eigenvectors of the JJt
 J_Jtranspose = simplify(J_DD * J_DD.');
 
@@ -79,7 +118,7 @@ L1=0.5; L2=0.5; % Configuration 2
 L(1) = Link('revolute','d',0,'a',0,'alpha',0,'modified'); % base frame
 L(2) = Link('revolute','d',0,'a',L1,'alpha',0,'modified'); % frame 1
 L(3) = Link('revolute','d',0,'a',L2,'alpha',0,'modified'); % frame 2
-Robot = SerialLink(L, 'name', '2R SCARA Arm') % Combine Link objects together to form a Robot Object
+Robot_num = SerialLink(L, 'name', '2R SCARA Arm') % Combine Link objects together to form a Robot Object
 
 syms t1 t2; %TODO: here is the stuff for 
 symbolic_expr = t1^2 + t2^2;
@@ -102,7 +141,7 @@ for i = 1:5 %1:length(X)
 
     % Graph that robot position
     figure()
-    Robot.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
+    Robot_num.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
     % FIXME: SO t1 is actually controlling t2 and t2 just changes the EE orientation
     % Bug: So the first robot link is not appearing for some reason here
     
