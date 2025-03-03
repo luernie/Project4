@@ -1,8 +1,8 @@
 %% IK Trying
 function [t1, t2] = IK(Px, Py, L1, L2)
     % Calculate theta2
-    ct2 = ((Px^2 + Py^2) - L1^2 - L2^2) / (2 * L1 * L2) % messed up on the square here
-    st2 = sqrt(1 - (ct2)^2)
+    ct2 = ((Px^2 + Py^2) - L1^2 - L2^2) / (2 * L1 * L2); % messed up on the square here
+    st2 = -sqrt(1 - (ct2)^2);
     
     % Check for valid values of ct2 and st2
     if ~isreal(ct2) || ~isreal(st2)

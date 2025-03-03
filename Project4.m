@@ -58,6 +58,7 @@ J_DD = simplify([J1, J2])
 X = 0:0.1:1; % X-axis positions from 0 to 1 meter in 0.1 meter increments
 Y = 0;
 
+close all;
 for c = 1:3 % Loops through each configuration
     Config1 = [0.25 0.75]; % L1 and L2 parameters
     Config2 = [0.5 0.5];
@@ -71,6 +72,9 @@ for c = 1:3 % Loops through each configuration
     L(2) = Link('revolute', 'd', 0, 'a', L1_num, 'alpha', 0, 'modified');   % frame 1
     L(3) = Link('revolute', 'd', 0, 'a', L2_num, 'alpha', 0, 'modified');   % frame 2
     Robot = SerialLink(L, 'name', '2R SCARA Arm'); % Combine Link objects together to form a Robot Object
+
+    figure;
+    hold on;
 
     for i = 1:length(X) % Loops through every X coordinate
         % Calculate Ik for each X,Y combo
@@ -87,42 +91,89 @@ for c = 1:3 % Loops through each configuration
             continue; % Skip plotting if t1 or t2 are NaN
         end
 
-        % %Graph that robot position
-        % figure()
-        % disp("plot")
-        % Robot.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
-
+        % Graph that robot position
+            % figure()
+            % disp("plot")
+            % Robot.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
+        % End Graph robot position
+        
         % Calculates the Jacobian for that robot position
         J = calcJ(L1_num, L2_num, t1, t2);
         % Store J values in cell arrays
         J_values{c, i} = J;
 
         % Calculate the Eval and Evec
-        [eVec, eVal] = eig(J);
+        [eVec, eVal] = eig(J*J.');
         eVec_values{c, i} = eVec; % represents the principal directions
-        eVal_values{c, i} = eVal; % Serve as the scaling factors
+        eVal_values{c, i} = diag(eVal); % Serve as the scaling factors
 
         %% Graph the Ellipses
-        % % End-effector position
-        % x = L1 * cos(theta1) + L2 * cos(theta1 + theta2);
-        % y = L1 * sin(theta1) + L2 * sin(theta1 + theta2);
-
         % Plot robot arms
-        figure;
-        hold on;
+        % figure;
+        % hold on;
         plot([0, L1_num * cos(t1)], [0, L1_num * sin(t1)], 'b-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
         plot([L1_num * cos(t1), X(i)], [L1_num * sin(t1), Y], 'r-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
         
-        % Plot end effector position
-        plot(X(i), Y, 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k', 'DisplayName', 'End Effector');
+        % % Plot end effector position
+        % plot(X(i), Y, 'ko', 'MarkerSize', 4, 'MarkerFaceColor', 'k', 'DisplayName', 'End Effector');
+
+        % Ellipsoid Tests
+            % % Velocity Ellipse (Make sure to use the diagonal values)
+            % vScale1 = sqrt(eVal(1, 1)) * 1; % Scale factor for first velocity ellipse (adjust 0.2 for visualization)
+            % quiver(X(i), Y, vScale1 * eVec(1, 1), vScale1 * eVec(2, 1), 'm', 'LineWidth', 2, 'DisplayName', 'Velocity Ellipse');
+            % vScale2 = sqrt(eVal(2, 2)) * 1; % Scale factor for second velocity ellipse (adjust 0.2 for visualization)
+            % quiver(X(i), Y, vScale2 * eVec(1, 2), vScale2 * eVec(2, 2), 'm', 'LineWidth', 2);
+            
+            % % TODO: Add in the full ellipse and should be done
+            % % TODO: Add all the graphs into just one? 
+            % % Force Ellipse
+            % fScale1 = 1 / sqrt(eVal(1, 1)) * 1; % Scale factor for force ellipse (adjust 0.2 for visualization)
+            % quiver(X(i), Y, fScale1 * eVec(1, 1), fScale1 * eVec(2, 1), 'g', 'LineWidth', 2, 'DisplayName', 'Force Ellipse');
+            % fScale2 = 1 / sqrt(eVal(2, 2)) * 1; % Scale factor for force ellipse (adjust 0.2 for visualization)
+            % quiver(X(i), Y, fScale2 * eVec(1, 2), fScale2 * eVec(2, 2), 'g', 'LineWidth', 2);
+        % End Ellipsoid Tests
+
+        %%%%%%%%%%%%%%%%%%%%%%%input the eval and evec
+
+        % Define parameters
+        x0 = X(i);  % Center x-coordinate
+        y0 = Y;  % Center y-coordinate
         
-        xlim([-1.5,1.5]);
+        % Direction vectors (2x1)
+        dir1 = eVec(:,1);
+        mag1 = 1/sqrt(eVal(1,1));
+        dir2 = eVec(:,2); % usually semi-major axis aka larger?
+        mag2 = 1/sqrt(eVal(2,2)); % usually semi-major axis aka larger?
+
+        % Parametric equations for ellipse using direction vectors
+        x = x0 + mag2 * cos(theta) * dir2(1) + mag1 * sin(theta) * dir1(1);
+        y = y0 + mag2 * cos(theta) * dir2(2) + mag1 * sin(theta) * dir1(2);
+        
+        % Angle parameter
+        theta = linspace(0, 2*pi, 100);
+        
+        % % Parametric equations for ellipse using direction vectors
+        % x = x0 + a * cos(theta) * dx(1) + b * sin(theta) * dy(1);
+        % y = y0 + a * cos(theta) * dx(2) + b * sin(theta) * dy(2);
+        
+        % Plot the ellipse
+        % figure;
+        plot(x, y, 'b', 'LineWidth', 2);
+        axis equal;  % Ensure equal scaling on both axes
+        grid on;
+        xlabel('X');
+        ylabel('Y');
+        title('Ellipse Plot');
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+        xlim([-0.5,1.5]);
         ylim([-1.5,1.5]);
         grid on;
 
-        hold off;
-        drawnow
+        % hold off;
+        % drawnow
     end
+    hold off;
 end
 
 % syms t1 t2;
@@ -133,61 +184,53 @@ end
 % disp(['Result of substituting t1 = ', num2str(t1_value), ' and t2 = ', num2str(t2_value)]);
 % disp(['Numeric Expression: ', char(numeric_expr)]);
 
+% % Example parameters
+% center = [0, 0];  % Center coordinates
 
-%% Test for the ellipses
-% Robot arm lengths
-L1 = .5;
-L2 = .5;
+% % Axes lengths and direction vectors
+% axes_lengths = [2, 1];  % Semi-major and semi-minor axes lengths
+% direction_vector_major = [1, 1];  % Direction vector for the semi-major axis (adjust as needed)
+% direction_vector_minor = [-1, 1]; % Direction vector for the semi-minor axis (adjust as needed)
 
-% Joint angles (theta values)
-theta1 = 0;  % Example values, adjust as needed
-theta2 = -pi/4;
+% % Calculate angles from direction vectors
+% rotation_angle_major = atan2(direction_vector_major(2), direction_vector_major(1));
+% rotation_angle_minor = atan2(direction_vector_minor(2), direction_vector_minor(1));
 
-% End-effector position
-x = L1 * cos(theta1) + L2 * cos(theta1 + theta2);
-y = L1 * sin(theta1) + L2 * sin(theta1 + theta2);
+% % Plotting the ellipse
+% hold on;
+% ellipse(center, axes_lengths, rotation_angle_major, 'b');  % Semi-major axis
+% ellipse(center, axes_lengths, rotation_angle_minor, 'r');  % Semi-minor axis
+% hold off;
 
-% Plot robot arms
-figure;
-hold on;
-plot([0, L1 * cos(theta1)], [0, L1 * sin(theta1)], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
-plot([L1 * cos(theta1), x], [L1 * sin(theta1), y], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
+% axis equal;  % Ensure equal scaling on x and y axes
+% grid on;
 
-% Velocity ellipsoid (example values)
-lambda1_vel = 0;
-lambda2_vel = 0.2;
-v1_vel = [cos(theta1 + pi/4); sin(theta1 + pi/4)];  % Example eigenvector
-v2_vel = [cos(theta1 - pi/4); sin(theta1 - pi/4)];  % Example eigenvector
-scale_vel = 1.0;  % Scale factor for visualization
+% input the eval and evec
 
-theta_vel = atan2(v1_vel(2), v1_vel(1));  % Angle of the first eigenvector
+% % Define parameters
+% x0 = 3;  % Center x-coordinate
+% y0 = 2;  % Center y-coordinate
 
-ellipse_x_vel = x + scale_vel * sqrt(lambda1_vel) * cos(linspace(0, 2*pi, 100));
-ellipse_y_vel = y + scale_vel * sqrt(lambda2_vel) * sin(linspace(0, 2*pi, 100));
-rot_matrix_vel = [cos(theta_vel) -sin(theta_vel); sin(theta_vel) cos(theta_vel)];
-ellipse_coords_vel = rot_matrix_vel * [ellipse_x_vel; ellipse_y_vel];
-plot(x + ellipse_coords_vel(1,:), y + ellipse_coords_vel(2,:), 'b--', 'LineWidth', 2, 'DisplayName', 'Velocity Ellipse');
+% % Direction vectors (2x1)
+% dx = [1; 1];  % Example direction vector along x-axis
+% dy = [0; 1];  % Example direction vector along y-axis
 
-% Force ellipsoid (example values)
-lambda1_force = 0.3;
-lambda2_force = 0.1;
-v1_force = [cos(theta1 + pi/3); sin(theta1 + pi/3)];  % Example eigenvector
-v2_force = [cos(theta1 - pi/3); sin(theta1 - pi/3)];  % Example eigenvector
-scale_force = 1.0;  % Scale factor for visualization
+% % Magnitudes (semi-major and semi-minor axes)
+% a = 4;  % Example magnitude for semi-major axis
+% b = 2;  % Example magnitude for semi-minor axis
 
-theta_force = atan2(v1_force(2), v1_force(1));  % Angle of the first eigenvector
+% % Angle parameter
+% theta = linspace(0, 2*pi, 100);
 
-ellipse_x_force = x + scale_force * sqrt(lambda1_force) * cos(linspace(0, 2*pi, 100));
-ellipse_y_force = y + scale_force * sqrt(lambda2_force) * sin(linspace(0, 2*pi, 100));
-rot_matrix_force = [cos(theta_force) -sin(theta_force); sin(theta_force) cos(theta_force)];
-ellipse_coords_force = rot_matrix_force * [ellipse_x_force; ellipse_y_force];
-plot(x + ellipse_coords_force(1,:), y + ellipse_coords_force(2,:), 'r--', 'LineWidth', 2, 'DisplayName', 'Force Ellipse');
+% % Parametric equations for ellipse using direction vectors
+% x = x0 + a * cos(theta) * dx(1) + b * sin(theta) * dy(1);
+% y = y0 + a * cos(theta) * dx(2) + b * sin(theta) * dy(2);
 
-% Plot settings
-xlabel('X');
-ylabel('Y');
-title('Robot Arm and Ellipses');
-axis equal;
-grid on;
-legend;
-hold off;
+% % Plot the ellipse
+% figure;
+% plot(x, y, 'b', 'LineWidth', 2);
+% axis equal;  % Ensure equal scaling on both axes
+% grid on;
+% xlabel('X');
+% ylabel('Y');
+% title('Ellipse Plot');
