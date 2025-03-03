@@ -25,7 +25,7 @@ Robot = SerialLink(L, 'name', '2R SCARA Arm') % Combine Link objects together to
 %% IK Notes
 x = L2*cos(t1+t2)+L1*cos(t1);
 y = L2*sin(t1+t2)+L1*sin(t1);
-simplify(sqrt(x^2+y^2), 'Steps', 10)
+simplify(x^2+y^2, 'Steps', 10)
 %% Jacobian Calculation Explicit Method
 % Forward Kinematics - Get T matrices from T structure
 T01 = T(1).matrix;
@@ -55,8 +55,7 @@ J_DD = simplify([J1, J2])
 
 
 %% Double for loop
-
-X = [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1];
+X = 0:0.1:1; % X-axis positions from 0 to 1 meter in 0.1 meter increments
 Y = 0;
 
 for c = 1:3 % Loops through each configuration
@@ -73,8 +72,10 @@ for c = 1:3 % Loops through each configuration
     L(3) = Link('revolute', 'd', 0, 'a', L2_num, 'alpha', 0, 'modified');   % frame 2
     Robot = SerialLink(L, 'name', '2R SCARA Arm'); % Combine Link objects together to form a Robot Object
 
-    for i = 1:3 % Loops through every X coordinate
+    for i = 1:length(X) % Loops through every X coordinate
         % Calculate Ik for each X,Y combo
+        disp("IK for the value X = " + X(i))
+
         [t1, t2] = IK(X(i), Y, L1_num, L2_num);
 
         % Store t1 and t2 values in cell arrays
@@ -86,10 +87,10 @@ for c = 1:3 % Loops through each configuration
             continue; % Skip plotting if t1 or t2 are NaN
         end
 
-        %Graph that robot position
-        figure()
-        disp("plot")
-        Robot.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
+        % %Graph that robot position
+        % figure()
+        % disp("plot")
+        % Robot.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
 
         % Calculates the Jacobian for that robot position
         J = calcJ(L1_num, L2_num, t1, t2);
@@ -98,55 +99,33 @@ for c = 1:3 % Loops through each configuration
 
         % Calculate the Eval and Evec
         [eVec, eVal] = eig(J);
-        eVec_values{c, i} = eVec;
-        eVal_values{c, i} = eVal;
+        eVec_values{c, i} = eVec; % represents the principal directions
+        eVal_values{c, i} = eVal; % Serve as the scaling factors
 
+        %% Graph the Ellipses
+        % % End-effector position
+        % x = L1 * cos(theta1) + L2 * cos(theta1 + theta2);
+        % y = L1 * sin(theta1) + L2 * sin(theta1 + theta2);
 
-        % % Add onto the ellipse
-        % Robot.vellipse([t1 t2 0], 'fillcolor','b', 'edgecolor','w',alpha',0.5);
-        % Robot.fellipse([t1 t2 0], 'fillcolor','r', 'edgecolor','w',alpha',0.5);
-        % % BUG: Not working here for the ellipse, why Jacobian bad?
-        % TODO: get both ellipses on to the graph
-        % TODO: Graph the matrix stuff for each
-        % TODO: If not able to then skip and say its singular
-        % TODO: Solve the evals for each
+        % Plot robot arms
+        figure;
+        hold on;
+        plot([0, L1_num * cos(t1)], [0, L1_num * sin(t1)], 'b-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
+        plot([L1_num * cos(t1), X(i)], [L1_num * sin(t1), Y], 'r-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
+        
+        % Plot end effector position
+        plot(X(i), Y, 'ko', 'MarkerSize', 8, 'MarkerFaceColor', 'k', 'DisplayName', 'End Effector');
+        
+        xlim([-1.5,1.5]);
+        ylim([-1.5,1.5]);
+        grid on;
+
+        hold off;
+        drawnow
     end
-
 end
 
-
-    % syms t1 t2; %TODO: here is the stuff for 
-    % symbolic_expr = t1^2 + t2^2;
-    % t1_value = 1.5;  % Numeric value for t1
-    % t2_value = 0.7;  % Numeric value for t2
-    % numeric_expr = subs(symbolic_expr, {t1, t2}, {t1_value, t2_value});
-    % disp(['Result of substituting t1 = ', num2str(t1_value), ' and t2 = ', num2str(t2_value)]);
-    % disp(['Numeric Expression: ', char(numeric_expr)]);
-
-    % % redefine robot parameters to reflect the symbolic
-    % for i = 1:5 %1:length(X)
-    %     % Calculate Ik for each X,Y combo
-    %     [t1, t2] = IK(X(i), Y, L1, L2);
-
-    %     % Graph that robot position
-    %     figure()
-    %     Robot_num.plot([t1 t2 0], 'workspace', [-1.5 1.5 -1.5 1.5 -.5 1]) % radians express
-    %     % FIXME: SO t1 is actually controlling t2 and t2 just changes the EE orientation
-    %     % Bug: So the first robot link is not appearing for some reason here
-        
-    %     % Add onto the ellipse
-    %     % Robot.vellipse([t1 t2], 'fillcolor','b', 'edgecolor','w',alpha',0.5);
-    %     % Robot.fellipse([t1 t2], 'fillcolor','r', 'edgecolor','w',alpha',0.5);
-    %     % BUG: Not working here for the ellipse, why Jacobian bad?
-    %     disp("hello")
-    %     % TODO: get both ellipses on to the graph
-    %     % TODO: Graph the matrix stuff for each
-    %     % TODO: If not able to then skip and say its singular
-    % end
-% % TODO: Graph the ellipses, first calculate the IK in btween though
-
-
-% syms t1 t2; %TODO: here is the stuff for 
+% syms t1 t2;
 % symbolic_expr = t1^2 + t2^2;
 % t1_value = 1.5;  % Numeric value for t1
 % t2_value = 0.7;  % Numeric value for t2
@@ -155,21 +134,60 @@ end
 % disp(['Numeric Expression: ', char(numeric_expr)]);
 
 
-% % TODO: For loop for each configuration, for each x value
+%% Test for the ellipses
+% Robot arm lengths
+L1 = .5;
+L2 = .5;
 
+% Joint angles (theta values)
+theta1 = 0;  % Example values, adjust as needed
+theta2 = -pi/4;
 
+% End-effector position
+x = L1 * cos(theta1) + L2 * cos(theta1 + theta2);
+y = L1 * sin(theta1) + L2 * sin(theta1 + theta2);
 
-% for i = 1:5 %1:length(X)
+% Plot robot arms
+figure;
+hold on;
+plot([0, L1 * cos(theta1)], [0, L1 * sin(theta1)], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
+plot([L1 * cos(theta1), x], [L1 * sin(theta1), y], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
 
-%     % FIXME: SO t1 is actually controlling t2 and t2 just changes the EE orientation
-%     % Bug: So the first robot link is not appearing for some reason here
-    
-%     % Add onto the ellipse
-%     % Robot.vellipse([t1 t2], 'fillcolor','b', 'edgecolor','w',alpha',0.5);
-%     % Robot.fellipse([t1 t2], 'fillcolor','r', 'edgecolor','w',alpha',0.5);
-%     % BUG: Not working here for the ellipse, why Jacobian bad?
+% Velocity ellipsoid (example values)
+lambda1_vel = 0;
+lambda2_vel = 0.2;
+v1_vel = [cos(theta1 + pi/4); sin(theta1 + pi/4)];  % Example eigenvector
+v2_vel = [cos(theta1 - pi/4); sin(theta1 - pi/4)];  % Example eigenvector
+scale_vel = 1.0;  % Scale factor for visualization
 
-%     % TODO: get both ellipses on to the graph
-%     % TODO: Graph the matrix stuff for each
-%     % TODO: If not able to then skip and say its singular
-% end
+theta_vel = atan2(v1_vel(2), v1_vel(1));  % Angle of the first eigenvector
+
+ellipse_x_vel = x + scale_vel * sqrt(lambda1_vel) * cos(linspace(0, 2*pi, 100));
+ellipse_y_vel = y + scale_vel * sqrt(lambda2_vel) * sin(linspace(0, 2*pi, 100));
+rot_matrix_vel = [cos(theta_vel) -sin(theta_vel); sin(theta_vel) cos(theta_vel)];
+ellipse_coords_vel = rot_matrix_vel * [ellipse_x_vel; ellipse_y_vel];
+plot(x + ellipse_coords_vel(1,:), y + ellipse_coords_vel(2,:), 'b--', 'LineWidth', 2, 'DisplayName', 'Velocity Ellipse');
+
+% Force ellipsoid (example values)
+lambda1_force = 0.3;
+lambda2_force = 0.1;
+v1_force = [cos(theta1 + pi/3); sin(theta1 + pi/3)];  % Example eigenvector
+v2_force = [cos(theta1 - pi/3); sin(theta1 - pi/3)];  % Example eigenvector
+scale_force = 1.0;  % Scale factor for visualization
+
+theta_force = atan2(v1_force(2), v1_force(1));  % Angle of the first eigenvector
+
+ellipse_x_force = x + scale_force * sqrt(lambda1_force) * cos(linspace(0, 2*pi, 100));
+ellipse_y_force = y + scale_force * sqrt(lambda2_force) * sin(linspace(0, 2*pi, 100));
+rot_matrix_force = [cos(theta_force) -sin(theta_force); sin(theta_force) cos(theta_force)];
+ellipse_coords_force = rot_matrix_force * [ellipse_x_force; ellipse_y_force];
+plot(x + ellipse_coords_force(1,:), y + ellipse_coords_force(2,:), 'r--', 'LineWidth', 2, 'DisplayName', 'Force Ellipse');
+
+% Plot settings
+xlabel('X');
+ylabel('Y');
+title('Robot Arm and Ellipses');
+axis equal;
+grid on;
+legend;
+hold off;
