@@ -1,4 +1,4 @@
-%% FK Function
+%% FK Function For Part 1
 function [T, Tfinal] = FK(alpha, a, d, theta) % Calculated FK (263A Final Exam code)
     %syms d1 a2 a3
     % Initialization of the transformation from the base to the end effector

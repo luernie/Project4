@@ -1,4 +1,4 @@
-%% IK Trying
+%% IK Function For Part 1
 function [t1, t2] = IK(Px, Py, L1, L2)
     % Calculate theta2
     ct2 = ((Px^2 + Py^2) - L1^2 - L2^2) / (2 * L1 * L2); % messed up on the square here

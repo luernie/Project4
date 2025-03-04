@@ -1,4 +1,4 @@
-function J = calcJ(L1,L2,t1,t2)
+function J = calcJ(L1,L2,t1,t2) % For Part 1
     % This function will be used to calculate the
     % Jacobian Matrix using given input
     % Fill this function
