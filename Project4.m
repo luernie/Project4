@@ -58,12 +58,13 @@ J_DD = simplify([J1, J2])
 X = 0:0.1:1; % X-axis positions from 0 to 1 meter in 0.1 meter increments
 Y = 0;
 
+Config1 = [0.25 0.75]; % L1 and L2 parameters
+Config2 = [0.5 0.5];
+Config3 = [0.75 0.25];
+ConfigAll = [Config1; Config2; Config3];
+
 close all;
 for c = 1:3 % Loops through each configuration
-    Config1 = [0.25 0.75]; % L1 and L2 parameters
-    Config2 = [0.5 0.5];
-    Config3 = [0.75 0.25];
-    ConfigAll = [Config1; Config2; Config3];
     L1_num = ConfigAll(c,1);
     L2_num = ConfigAll(c,2);
 
@@ -73,7 +74,11 @@ for c = 1:3 % Loops through each configuration
     L(3) = Link('revolute', 'd', 0, 'a', L2_num, 'alpha', 0, 'modified');   % frame 2
     Robot = SerialLink(L, 'name', '2R SCARA Arm'); % Combine Link objects together to form a Robot Object
 
-    figure;
+    % Initialize figures
+    figure(c);
+    hold on;
+
+    figure(c+length(ConfigAll));
     hold on;
 
     for i = 1:length(X) % Loops through every X coordinate
@@ -102,18 +107,27 @@ for c = 1:3 % Loops through each configuration
         % Store J values in cell arrays
         J_values{c, i} = J;
 
-        % Calculate the Eval and Evec
-        [eVec, eVal] = eig(J*J.');
-        eVec_values{c, i} = eVec; % represents the principal directions
-        eVal_values{c, i} = diag(eVal); % Serve as the scaling factors
+        % Calculate the Eval and Evec for Velocity ((J*J^T))
+        [eVecV, eValV] = eig((J*J.'));
+        eVecV_values{c, i} = eVecV; % represents the principal directions
+        eValV_values{c, i} = diag(eValV); % Serve as the scaling factors
+
+        % Calculate the Eval and Evec for Force ((J^T * J)^-1)
+        [eVecF, eValF] = eig(inv((J.'*J))); % must do inverse and other way multiply
+        eVecF_values{c, i} = eVecF; % represents the principal directions
+        eValF_values{c, i} = diag(eValF); % Serve as the scaling factors
 
         %% Graph the Ellipses
-        % Plot robot arms
-        % figure;
-        % hold on;
-        plot([0, L1_num * cos(t1)], [0, L1_num * sin(t1)], 'b-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
-        plot([L1_num * cos(t1), X(i)], [L1_num * sin(t1), Y], 'r-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
-        
+        % % Plot robot arms
+            % figure(c);
+            % plot([0, L1_num * cos(t1)], [0, L1_num * sin(t1)], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
+            % plot([L1_num * cos(t1), X(i)], [L1_num * sin(t1), Y], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
+
+            % figure(c+length(ConfigAll));
+            % plot([0, L1_num * cos(t1)], [0, L1_num * sin(t1)], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 1');
+            % plot([L1_num * cos(t1), X(i)], [L1_num * sin(t1), Y], 'k-', 'LineWidth', 2, 'DisplayName', 'Arm 2');
+        % % End Plot robot arms
+
         % % Plot end effector position
         % plot(X(i), Y, 'ko', 'MarkerSize', 4, 'MarkerFaceColor', 'k', 'DisplayName', 'End Effector');
 
@@ -124,8 +138,6 @@ for c = 1:3 % Loops through each configuration
             % vScale2 = sqrt(eVal(2, 2)) * 1; % Scale factor for second velocity ellipse (adjust 0.2 for visualization)
             % quiver(X(i), Y, vScale2 * eVec(1, 2), vScale2 * eVec(2, 2), 'm', 'LineWidth', 2);
             
-            % % TODO: Add in the full ellipse and should be done
-            % % TODO: Add all the graphs into just one? 
             % % Force Ellipse
             % fScale1 = 1 / sqrt(eVal(1, 1)) * 1; % Scale factor for force ellipse (adjust 0.2 for visualization)
             % quiver(X(i), Y, fScale1 * eVec(1, 1), fScale1 * eVec(2, 1), 'g', 'LineWidth', 2, 'DisplayName', 'Force Ellipse');
@@ -133,47 +145,66 @@ for c = 1:3 % Loops through each configuration
             % quiver(X(i), Y, fScale2 * eVec(1, 2), fScale2 * eVec(2, 2), 'g', 'LineWidth', 2);
         % End Ellipsoid Tests
 
-        %%%%%%%%%%%%%%%%%%%%%%%input the eval and evec
-
         % Define parameters
         x0 = X(i);  % Center x-coordinate
         y0 = Y;  % Center y-coordinate
+
+        % Angle parameter
+        theta = linspace(0, 2*pi, 100);
         
         % Direction vectors (2x1)
-        dir1 = eVec(:,1);
-        mag1 = 1/sqrt(eVal(1,1));
-        dir2 = eVec(:,2); % usually semi-major axis aka larger?
-        mag2 = 1/sqrt(eVal(2,2)); % usually semi-major axis aka larger?
+        dir1 = eVecV(:,1);
+        mag1 = sqrt(eValV(1,1));
+        dir2 = eVecV(:,2); % usually semi-major axis aka larger?
+        mag2 = sqrt(eValV(2,2)); % usually semi-major axis aka larger?
 
         % Parametric equations for ellipse using direction vectors
         x = x0 + mag2 * cos(theta) * dir2(1) + mag1 * sin(theta) * dir1(1);
         y = y0 + mag2 * cos(theta) * dir2(2) + mag1 * sin(theta) * dir1(2);
-        
-        % Angle parameter
-        theta = linspace(0, 2*pi, 100);
-        
-        % % Parametric equations for ellipse using direction vectors
-        % x = x0 + a * cos(theta) * dx(1) + b * sin(theta) * dy(1);
-        % y = y0 + a * cos(theta) * dx(2) + b * sin(theta) * dy(2);
-        
+    
         % Plot the ellipse
-        % figure;
+        figure(c);
         plot(x, y, 'b', 'LineWidth', 2);
-        axis equal;  % Ensure equal scaling on both axes
-        grid on;
-        xlabel('X');
-        ylabel('Y');
-        title('Ellipse Plot');
-%%%%%%%%%%%%%%%%%%%%%%%%
 
-        xlim([-0.5,1.5]);
-        ylim([-1.5,1.5]);
-        grid on;
+        % Direction vectors (2x1)
+        dir1 = eVecF(:,1);
+        % mag1 = 1/sqrt(eValF(1,1));
+        mag1 = sqrt(eValF(1,1)); % Already preinversed
+        dir2 = eVecF(:,2); % usually semi-major axis aka larger?
+        % mag2 = 1/sqrt(eValF(2,2)); % usually semi-major axis aka larger?
+        mag2 = sqrt(eValF(2,2)); % usually semi-major axis aka larger?
 
-        % hold off;
-        % drawnow
+
+        % Parametric equations for ellipse using direction vectors
+        x = x0 + mag2 * cos(theta) * dir2(1) + mag1 * sin(theta) * dir1(1);
+        y = y0 + mag2 * cos(theta) * dir2(2) + mag1 * sin(theta) * dir1(2);
+
+        figure(c+length(ConfigAll))
+        plot(x, y, 'r', 'LineWidth', 2);
+
     end
+    % Hold off to clear current figure after plotting
+    figure(c);
+    axis equal;  % Ensure equal scaling on both axes
+    grid on;
+    xlabel('X');
+    ylabel('Y');
+    title(['Velocity Ellipse Plot for Config ' num2str(c)]);
+    xlim([-0.5,1.5]);
+    ylim([-1.5,1.5]);
     hold off;
+    
+    figure(c+length(ConfigAll));
+    axis equal;  % Ensure equal scaling on both axes
+    grid on;
+    xlabel('X');
+    ylabel('Y');
+    title(['Force Ellipse Plot for Config ' num2str(c)]);
+    xlim([-8,8]);
+    ylim([-8,8]);
+    hold off;
+    
+    % drawnow
 end
 
 % syms t1 t2;
